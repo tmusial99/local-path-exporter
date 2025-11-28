@@ -1,8 +1,9 @@
 # Local Path Provisioner Exporter
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/local-path-exporter)](https://artifacthub.io/packages/search?repo=local-path-exporter)
 ![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?style=flat&logo=kubernetes&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 A specialized Prometheus Exporter for monitoring **local-path** PVC usage in Kubernetes.
 
