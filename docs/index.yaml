@@ -10,9 +10,9 @@ entries:
           url: https://github.com/tmusial99/local-path-exporter
     apiVersion: v2
     appVersion: 1.0.0
-    created: "2025-11-28T15:29:08.890146+01:00"
+    created: "2025-11-28T16:43:19.1593+01:00"
     description: A Prometheus exporter for local-path PVC storage usage
-    digest: 63043ca6af81e754e3d183ed8b5713d2c05e740f448511ff7903fdb4d92c29d4
+    digest: aa538bddcab019e3b8c1a01afcc8e2408ed0550a46b061a9ce6c18e31afb9ea1
     home: https://github.com/tmusial99/local-path-exporter
     icon: https://raw.githubusercontent.com/cncf/artwork/master/projects/kubernetes/icon/color/kubernetes-icon-color.png
     maintainers:
@@ -25,4 +25,4 @@ entries:
     urls:
     - https://tmusial99.github.io/local-path-exporter/local-path-exporter-0.1.0.tgz
     version: 0.1.0
-generated: "2025-11-28T15:29:08.888883+01:00"
+generated: "2025-11-28T16:43:19.157484+01:00"
