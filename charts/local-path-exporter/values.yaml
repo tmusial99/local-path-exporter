@@ -1,0 +1,102 @@
+# Default values for local-path-exporter.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Default chart name override.
+# Useful if you want to use a different name than "local-path-exporter".
+nameOverride: ""
+
+# Default fully qualified app name override.
+# Useful if you want to fix the long name regardless of the release name.
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/tmusial99/local-path-exporter
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  # Best practice: Keep it empty to use appVersion from Chart.yaml
+  tag: ""
+
+# Application configuration passed via Environment Variables
+config:
+  # The absolute path on the HOST node where the local-path provisioner stores data.
+  # Default to K3s path
+  storagePath: "/var/lib/rancher/k3s/storage"
+
+  # The template string used to parse directory names and extract labels.
+  #
+  # Dynamic Labels:
+  # You can define ANY placeholder inside curly braces {}.
+  # The exporter will automatically detect them and use them as Prometheus Label keys.
+  #
+  # Special characters:
+  #   * - Wildcard used to ignore variable parts of the path (like UUIDs).
+  #
+  # Examples:
+  #   1. Standard Rancher: "pvc-*_{namespace}_{pvcname}"
+  #      -> Labels: namespace="...", pvcname="..."
+  #
+  #   2. Custom structure: "{team}-{app}-{id}"
+  #      -> Labels: team="...", app="...", id="..."
+  metricTemplate: "pvc-*_{namespace}_{pvcname}"
+
+  # Background directory scan interval in seconds.
+  refreshIntervalSeconds: 60
+
+service:
+  type: ClusterIP
+  port: 9100
+  name: http-metrics
+  # Standard annotations for Prometheus scraping (fallback method)
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9100"
+    prometheus.io/path: "/metrics"
+
+serviceMonitor:
+  # Set to true to create a ServiceMonitor resource
+  enabled: false
+
+  # Additional labels for the ServiceMonitor.
+  # Required by some Prometheus Operators to discover the monitor.
+  # Example:
+  # labels:
+  #   release: kube-prometheus-stack
+  labels: {}
+
+  # Scrape interval.
+  interval: 60s
+  # Scrape timeout.
+  scrapeTimeout: 10s
+
+  # If true, the ServiceMonitor will look for the Service in the same namespace as the chart.
+  matchNamespace: true
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 10m
+    memory: 32Mi
+
+# Security context required to access host filesystem (root access).
+securityContext:
+  runAsUser: 0
+  runAsGroup: 0
+
+# Mount the host path to the container.
+volumeMounts:
+  readOnly: true
+
+# Node selection constraints
+nodeSelector: {}
+
+# Tolerations to allow scheduling on master/control-plane nodes if needed.
+tolerations:
+  - effect: NoSchedule
+    operator: Exists
+  - effect: NoExecute
+    operator: Exists
+
+affinity: {}

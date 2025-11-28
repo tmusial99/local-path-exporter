@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "local-path-exporter.fullname" . }}
+  labels:
+    {{- include "local-path-exporter.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http-metrics
+      protocol: TCP
+      name: {{ .Values.service.name }}
+  selector:
+    {{- include "local-path-exporter.selectorLabels" . | nindent 4 }}
+  

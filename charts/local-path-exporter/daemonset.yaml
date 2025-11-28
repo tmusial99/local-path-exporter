@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "local-path-exporter.fullname" . }}
+  labels:
+    {{- include "local-path-exporter.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "local-path-exporter.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "local-path-exporter.selectorLabels" . | nindent 8 }}
+    spec:
+      # Security context from values (runAsUser: 0 required for host access)
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: STORAGE_PATH
+              value: {{ .Values.config.storagePath | quote }}
+            - name: METRIC_TEMPLATE
+              value: {{ .Values.config.metricTemplate | quote }}
+            - name: REFRESH_INTERVAL_SECONDS
+              value: {{ .Values.config.refreshIntervalSeconds | quote }}
+            - name: LISTEN_ADDR
+              value: ":{{ .Values.service.port }}"
+          ports:
+            - name: http-metrics
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          # Mount the host directory defined in values.yaml
+          volumeMounts:
+            - name: storage-volume
+              mountPath: {{ .Values.config.storagePath }}
+              {{- toYaml .Values.volumeMounts | nindent 14 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: storage-volume
+          hostPath:
+            path: {{ .Values.config.storagePath }}
+            type: Directory
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
