@@ -8,11 +8,12 @@ entries:
       artifacthub.io/links: |
         - name: Source
           url: https://github.com/tmusial99/local-path-exporter
+      artifacthub.io/readme: https://raw.githubusercontent.com/tmusial99/local-path-exporter/master/README.md
     apiVersion: v2
     appVersion: 1.0.0
-    created: "2025-11-28T17:23:22.585042+01:00"
+    created: "2025-11-29T17:17:48.463673+01:00"
     description: A Prometheus exporter for local-path PVC storage usage
-    digest: 2525ec65fa76d5a03db75855e8b0eac67ad1c2bc6fca6ef87cd852ddf8b03480
+    digest: c48c5b6c8068fa8ee4228b68b86bfbc450a7119a22fe41faaaf2990c60e6bcfa
     home: https://github.com/tmusial99/local-path-exporter
     icon: https://raw.githubusercontent.com/cncf/artwork/master/projects/kubernetes/icon/color/kubernetes-icon-color.png
     maintainers:
@@ -25,4 +26,4 @@ entries:
     urls:
     - https://tmusial99.github.io/local-path-exporter/local-path-exporter-0.1.0.tgz
     version: 0.1.0
-generated: "2025-11-28T17:23:22.584197+01:00"
+generated: "2025-11-29T17:17:48.46266+01:00"

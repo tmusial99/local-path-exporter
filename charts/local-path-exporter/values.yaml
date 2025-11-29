@@ -33,12 +33,12 @@ config:
   #   * - Wildcard used to ignore variable parts of the path (like UUIDs).
   #
   # Examples:
-  #   1. Standard Rancher: "pvc-*_{namespace}_{pvcname}"
-  #      -> Labels: namespace="...", pvcname="..."
+  #   1. Standard Rancher: "pvc-*_{pvc_namespace}_{pvc_name}"
+  #      -> Labels: pvc_namespace="...", pvc_name="..."
   #
   #   2. Custom structure: "{team}-{app}-{id}"
   #      -> Labels: team="...", app="...", id="..."
-  metricTemplate: "pvc-*_{namespace}_{pvcname}"
+  metricTemplate: "pvc-*_{pvc_namespace}_{pvc_name}"
 
   # Background directory scan interval in seconds.
   refreshIntervalSeconds: 60
