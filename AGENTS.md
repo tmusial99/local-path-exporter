@@ -55,7 +55,7 @@ app/                      Go module (module path: local-path-exporter)
 charts/local-path-exporter/   Helm chart (DaemonSet, Service, ServiceMonitor, helpers)
 docs/                     Published Helm repo (index.yaml + .tgz) + artifacthub-repo.yml
 grafana/                  dashboard.json + screenshot
-.github/workflows/        docker-publish.yaml (tag-triggered image build/push)
+.github/workflows/        ci.yaml (PR/push checks) + docker-publish.yaml (tag-triggered image build/push)
 README.md
 ```
 
@@ -68,9 +68,9 @@ Go module path is `local-path-exporter` (not a VCS URL). The Go code lives under
 # Go (run from app/)
 cd app
 go build ./...            # build all packages
-go test ./...             # tests (none yet — adding them is a known gap)
+go test ./...             # unit tests (parser + collector)
 go vet ./...
-golangci-lint run         # if installed (v2 config if/when added)
+golangci-lint run         # v2; config in app/.golangci.yml
 
 # Helm (run from repo root)
 helm lint charts/local-path-exporter
@@ -81,7 +81,7 @@ helm template t charts/local-path-exporter --set serviceMonitor.enabled=true
 docker build -t local-path-exporter ./app
 ```
 
-Go toolchain: **Go 1.25.x** (`app/go.mod`; Dockerfile pins `golang:1.25.4`).
+Go toolchain: **Go 1.26.x** (`app/go.mod`; Dockerfile pins `golang:1.26.4-alpine`).
 The collector uses `syscall.Statfs`, which is **Unix-only** (Linux + macOS/BSD,
 not Windows). The `Statfs_t` field types differ per platform, but the code
 converts them explicitly, so all packages build and `go test` runs natively on
@@ -135,11 +135,15 @@ advertising a chart version the `.tgz` does not contain).
 
 ## CI / release pipeline
 
+- `.github/workflows/ci.yaml`: runs on pull requests and pushes to `master`. Two
+  jobs — **go** (`go vet`, `go test -race`, `golangci-lint`, `govulncheck`) and
+  **helm** (`helm lint`, `helm template` with default and
+  `serviceMonitor.enabled=true`). This is the PR/push quality gate.
 - `.github/workflows/docker-publish.yaml`: triggered on a `*.*.*` tag push. Logs
   in to GHCR, derives tags via `docker/metadata-action` (semver), and
-  builds/pushes from `./app` with GHA build cache. There is currently **no CI on
-  PRs/pushes** (no `go vet`/`go test`/`golangci-lint`/`helm lint`) and the image
-  build is **single-architecture** — both are known improvement areas.
+  builds/pushes a **multi-arch** image (`linux/amd64,linux/arm64`) from `./app`
+  with GHA build cache, attaching **provenance + SBOM** and a **keyless Cosign
+  signature** (Sigstore OIDC).
 - Chart publishing to the GitHub Pages Helm repo (`docs/`) is currently
   **manual** (`helm package` + regenerate `index.yaml`). Verify the GitHub Pages
   source (master `/docs` vs a `gh-pages` branch) before changing the publish flow.
