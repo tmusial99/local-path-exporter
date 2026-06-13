@@ -1,2 +1,15 @@
 .idea
 .git
+
+# macOS
+.DS_Store
+
+# Local agent state and working artefacts (not source)
+audit/
+.agents/
+.claude/
+
+# Go build artifacts
+/app/exporter
+*.test
+*.out
