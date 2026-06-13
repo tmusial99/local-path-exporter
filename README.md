@@ -38,7 +38,7 @@ The exporter exposes the following metrics on port `9100`:
 
 | Metric Name                           | Type  | Description                                                | Labels                      |
 |---------------------------------------|-------|------------------------------------------------------------|-----------------------------|
-| `local_path_pvc_usage_bytes`          | Gauge | Actual size of the PVC directory in bytes.                 | `pvc_namespace`, `pvc_name` |
+| `local_path_pvc_usage_bytes`          | Gauge | Actual on-disk usage (block-based, `du`-equivalent) of the PVC directory in bytes. | `pvc_namespace`, `pvc_name` |
 | `local_path_storage_capacity_bytes`   | Gauge | Total capacity of the underlying filesystem.               | -                           |
 | `local_path_storage_total_used_bytes` | Gauge | Total used space on the underlying filesystem (OS + PVCs). | -                           |
 
@@ -54,12 +54,20 @@ To import the dashboard into your Grafana instance, use the configuration file a
 
 You can customize the installation using `values.yaml`.
 
-| Parameter                       | Description                                          | Default                            |
-|---------------------------------|------------------------------------------------------|------------------------------------|
-| `config.storagePath`            | Absolute path to the local-path storage on the node. | `/var/lib/rancher/k3s/storage`     |
-| `config.refreshIntervalSeconds` | How often to recalculate directory sizes.            | `60`                               |
-| `config.metricTemplate`         | Pattern to extract labels from directory names.      | `pvc-*_{pvc_namespace}_{pvc_name}` |
-| `serviceMonitor.enabled`        | Enable ServiceMonitor for Prometheus Operator.       | `false`                            |
+| Parameter                        | Description                                                  | Default                            |
+|-----------------------------------|--------------------------------------------------------------|-------------------------------------|
+| `config.storagePath`              | Absolute path to the local-path storage on the node.        | `/var/lib/rancher/k3s/storage`     |
+| `config.refreshIntervalSeconds`   | How often to recalculate directory sizes.                    | `60`                               |
+| `config.metricTemplate`           | Pattern to extract labels from directory names.              | `pvc-*_{pvc_namespace}_{pvc_name}` |
+| `config.hostPathType`             | Type of the `hostPath` volume backing `config.storagePath` (see [Kubernetes hostPath volume types](https://kubernetes.io/docs/concepts/storage/volumes/#hostpath)). | `Directory` |
+| `containerSecurityContext`        | Container-level security context (hardened by default: no privilege escalation, read-only root filesystem, all capabilities dropped, `RuntimeDefault` seccomp profile). | see `values.yaml` |
+| `livenessProbe`                   | Liveness probe configuration (HTTP GET on `/metrics`).       | see `values.yaml`                  |
+| `readinessProbe`                  | Readiness probe configuration (HTTP GET on `/metrics`).      | see `values.yaml`                  |
+| `serviceMonitor.enabled`          | Enable ServiceMonitor for Prometheus Operator.                | `false`                            |
+
+> **Note:** With the default `config.hostPathType: Directory`, the path set in
+> `config.storagePath` must already exist on every node targeted by this
+> DaemonSet, or the pod will fail to start on that node.
 
 ## 🛠️ Architecture
 
@@ -70,10 +78,18 @@ You can customize the installation using `values.yaml`.
 
 ## ⚡ Performance
 
-This exporter is extremely lightweight and resource-efficient:
-- **CPU Usage**: Negligible (minimal CPU consumption)
-- **Memory Usage**: Approximately 10-20MB RAM per instance
-- Designed for efficient directory scanning and periodic metric updates without impacting cluster performance
+This exporter is designed to be lightweight, but the scan cost depends on your
+data:
+- Each scan walks every PVC directory and sums real on-disk block usage
+  (`du`-equivalent), so cost scales with the **number of files and inodes**,
+  not the total size in bytes. Directories with very large file counts will
+  take longer to scan than a single large file of the same size.
+- Scrapes never block on disk I/O — the background scanner runs on its own
+  schedule and `/metrics` always serves the last cached result.
+- `config.refreshIntervalSeconds` is the main throttle: increase it on nodes
+  with many files/PVCs to reduce scan frequency and I/O load.
+- **Memory Usage**: Typically in the 10-20MB RAM range per instance, but this
+  can grow with the number of PVCs and labels tracked.
 
 ## 📜 License
 
