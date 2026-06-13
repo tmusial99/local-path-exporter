@@ -1,0 +1,21 @@
+1. Monitor local-path provisioner disk usage:
+
+   Get the service port:
+   export SERVICE_PORT={{ .Values.service.port }}
+
+   Access the Prometheus metrics endpoint:
+   kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "local-path-exporter.fullname" . }} $SERVICE_PORT:{{ .Values.service.port }}
+   curl http://localhost:$SERVICE_PORT/metrics
+
+2. Enable Prometheus ServiceMonitor for automatic scraping:
+
+   Install with ServiceMonitor enabled:
+   helm upgrade --install {{ .Release.Name }} . --set serviceMonitor.enabled=true
+
+   Or update an existing release:
+   helm upgrade {{ .Release.Name }} . --set serviceMonitor.enabled=true
+
+3. No RBAC required:
+
+   This exporter reads the host filesystem only; it does not call the Kubernetes API.
+   No ServiceAccount, ClusterRole, or ClusterRoleBinding are needed.
