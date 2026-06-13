@@ -43,6 +43,11 @@ config:
   # Background directory scan interval in seconds.
   refreshIntervalSeconds: 60
 
+  # Type of the hostPath volume backing storagePath (see Kubernetes hostPath
+  # volume types). Defaults to "Directory": the path must already exist on
+  # every targeted node, or the pod will fail to start.
+  hostPathType: "Directory"
+
 service:
   type: ClusterIP
   port: 9100
@@ -80,10 +85,40 @@ resources:
     cpu: 10m
     memory: 32Mi
 
-# Security context required to access host filesystem (root access).
+# Pod-level security context required to access host filesystem (root access).
+# runAsUser/runAsGroup: 0 is required because the exporter must stat files
+# owned by arbitrary users on the host under config.storagePath.
 securityContext:
   runAsUser: 0
   runAsGroup: 0
+
+# Container-level security context. Hardened by default; root access is still
+# granted via the pod-level securityContext above, but the container itself
+# gets no extra privileges, no writable root filesystem, and a restricted
+# capability set.
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+  seccompProfile:
+    type: RuntimeDefault
+
+# Liveness probe for the exporter container.
+livenessProbe:
+  httpGet:
+    path: /metrics
+    port: http-metrics
+  initialDelaySeconds: 5
+  periodSeconds: 30
+
+# Readiness probe for the exporter container.
+readinessProbe:
+  httpGet:
+    path: /metrics
+    port: http-metrics
+  initialDelaySeconds: 5
+  periodSeconds: 10
 
 # Mount the host path to the container.
 volumeMounts:

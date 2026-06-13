@@ -20,6 +20,8 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           env:
             - name: STORAGE_PATH
               value: {{ .Values.config.storagePath | quote }}
@@ -33,6 +35,10 @@ spec:
             - name: http-metrics
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
           # Mount the host directory defined in values.yaml
           volumeMounts:
             - name: storage-volume
@@ -44,7 +50,7 @@ spec:
         - name: storage-volume
           hostPath:
             path: {{ .Values.config.storagePath }}
-            type: Directory
+            type: {{ .Values.config.hostPathType }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
