@@ -39,7 +39,7 @@ func NewPVCCollector(storagePath string, p *parser.DirParser) *PVCCollector {
 		parser: p,
 		descPVC: prometheus.NewDesc(
 			"local_path_pvc_usage_bytes",
-			"Actual disk usage of the specific local-path PVC directory",
+			"Actual on-disk usage (block-based, du-equivalent) of the local-path PVC directory in bytes",
 			p.LabelNames,
 			nil,
 		),
@@ -65,9 +65,12 @@ func (c *PVCCollector) Describe(ch chan<- *prometheus.Desc) {
 
 func (c *PVCCollector) Collect(ch chan<- prometheus.Metric) {
 	c.mu.RLock()
-	defer c.mu.RUnlock()
+	pvcs := c.cachePVCs
+	capacity := c.fsCapacity
+	used := c.fsDeviceUsed
+	c.mu.RUnlock()
 
-	for _, dp := range c.cachePVCs {
+	for _, dp := range pvcs {
 		ch <- prometheus.MustNewConstMetric(
 			c.descPVC,
 			prometheus.GaugeValue,
@@ -76,9 +79,9 @@ func (c *PVCCollector) Collect(ch chan<- prometheus.Metric) {
 		)
 	}
 
-	if c.fsCapacity > 0 {
-		ch <- prometheus.MustNewConstMetric(c.descCapacity, prometheus.GaugeValue, c.fsCapacity)
-		ch <- prometheus.MustNewConstMetric(c.descUsed, prometheus.GaugeValue, c.fsDeviceUsed)
+	if capacity > 0 {
+		ch <- prometheus.MustNewConstMetric(c.descCapacity, prometheus.GaugeValue, capacity)
+		ch <- prometheus.MustNewConstMetric(c.descUsed, prometheus.GaugeValue, used)
 	}
 }
 
@@ -162,11 +165,14 @@ func getDirSize(path string) (float64, error) {
 		if err != nil {
 			return nil
 		}
-		if !d.IsDir() {
-			info, err := d.Info()
-			if err == nil {
-				size += info.Size()
-			}
+		// Count real on-disk block usage for both files and directories
+		// (du-equivalent). Unix-only, consistent with the syscall.Statfs usage.
+		info, infoErr := d.Info()
+		if infoErr != nil {
+			return nil
+		}
+		if st, ok := info.Sys().(*syscall.Stat_t); ok {
+			size += 512 * int64(st.Blocks)
 		}
 		return nil
 	})
