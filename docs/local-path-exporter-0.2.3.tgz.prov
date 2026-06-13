@@ -1,0 +1,68 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/category: monitoring-logging
+  artifacthub.io/changes: |
+    - kind: security
+      description: Set automountServiceAccountToken=false (exporter never calls the Kubernetes API)
+    - kind: changed
+      description: First chart release published and signed automatically by CI (chart-release workflow)
+  artifacthub.io/images: |
+    - name: local-path-exporter
+      image: ghcr.io/tmusial99/local-path-exporter:1.1.0
+  artifacthub.io/license: MIT
+  artifacthub.io/links: |
+    - name: Source
+      url: https://github.com/tmusial99/local-path-exporter
+  artifacthub.io/screenshots: |
+    - title: Local Path Storage Overview dashboard
+      url: https://raw.githubusercontent.com/tmusial99/local-path-exporter/master/grafana/dashboard.png
+  artifacthub.io/signKey: |
+    fingerprint: 7FED455C2F76B3E0216E73F26F0F38A50C4D9D03
+    url: https://tmusial99.github.io/local-path-exporter/helm-signing-key.asc
+apiVersion: v2
+appVersion: 1.1.0
+description: A Prometheus exporter for local-path PVC storage usage
+home: https://github.com/tmusial99/local-path-exporter
+icon: https://raw.githubusercontent.com/cncf/artwork/master/projects/kubernetes/icon/color/kubernetes-icon-color.png
+keywords:
+- - prometheus
+- - exporter
+- - metrics
+- - storage
+- - pvc
+- - local-path
+- - local-path-provisioner
+- - kubernetes
+- - k3s
+maintainers:
+- - email: tmusial99@gmail.com
+  name: tmusial99
+name: local-path-exporter
+sources:
+- - https://github.com/tmusial99/local-path-exporter
+type: application
+version: 0.2.3
+
+...
+files:
+  local-path-exporter-0.2.3.tgz: sha256:4e05d39150dad91bb9ffaf21ed3509f50f1444208c048b9e24911aed9551ce23
+
+-----BEGIN PGP SIGNATURE-----
+
+wsG5BAEBCgBtBYJqLbx7CRBvDzilDE2dA0UUAAAAAAAcACBzYWx0QG5vdGF0aW9u
+cy5vcGVucGdwanMub3JnGSyDkXnl3HFxbmC4f5RQqT7aUeii+5Ra2FBtnxZSLsUW
+IQR/7UVcL3az4CFuc/JvDzilDE2dAwAA1oAQALhX/VObi+99ZkY1v34ts8aj+qhI
+hiQA5s23M9SKSyYqLExapJOtyppQuZ8J8QYBgF4RH9RQohJvcXld2c2MNakQ6kIG
+s/TvzGLpClzRh0HeKgBoiJYCTia0rR7v9RhTSN3XKYEfzaLgodoowKQYvHWm9eR7
+iBgWN88ps9wmXa0028CHjh6/Ov2F8rp5u7sI9tqDe+VZsLSsjmmlfwAntxjhEKLP
+Q3Nj+XXYZfhO4COafy1G26mDmZ2gLhVu/nfX/+dj0auxl/ZQTfmHOThbn5Yettai
+wG/8/XtbsdKbfY93JcgnDQcFbk6vWPGxQzUbX3/FBuPzEkx+cXl64d6dv8Qg2es7
+3F4FsOe2kjMLDplnXSH3uTosXPmiTNhJAxrcbbZ3FQLdfP3Ee+HSZ9BPM+zaPD1M
+G8ailTWjomZPxROASOSuceGkHS8qK5TY103vtV29ui3cVrulPrgLoxoxsrPvyZqj
+/iVz0MxnaSXYyMU6DnGSNIoRyg5XmbtJNqrQlFIy9GAb9sQ0Q5tDWeOwbU+y9bbN
+UanhGV1UJ4Flw9QXH4e0w8Y+BhcOGVWRrvxDZ1Gvqbh0RKBt7lNUB4sxxCfZy119
+10ot/3TBM8Vn02so41GfuXsNBuArSCEc1m0wIEgdWxqeHSD2d4F4IwA0kEcjL0yP
+njkSqDecEAapSvoG
+-----END PGP SIGNATURE-----
