@@ -11,28 +11,47 @@ type DirParser struct {
 	LabelNames []string
 }
 
-// NewDirParser creates the parser and detects labels from the template
+// reToken matches the special tokens in a template: a {label} placeholder or
+// a * wildcard. Everything else is treated as a literal run.
+var reToken = regexp.MustCompile(`\{([a-zA-Z0-9_]+)}|\*`)
+
+// NewDirParser creates the parser and detects labels from the template.
+// The template is tokenized into literal runs, "*" wildcards and "{label}"
+// placeholders; literal runs are regex-escaped so that regex metacharacters
+// in the template (e.g. ".") are matched literally rather than as regex
+// syntax.
 func NewDirParser(template string) (*DirParser, error) {
-	reTags := regexp.MustCompile(`\{([a-zA-Z0-9_]+)}`)
-	matches := reTags.FindAllStringSubmatch(template, -1)
-
 	var labelNames []string
-	for _, match := range matches {
-		labelNames = append(labelNames, match[1])
+	seenLabels := make(map[string]bool)
+
+	var sb strings.Builder
+	sb.WriteString("^")
+
+	lastEnd := 0
+	for _, loc := range reToken.FindAllStringSubmatchIndex(template, -1) {
+		start, end := loc[0], loc[1]
+		sb.WriteString(regexp.QuoteMeta(template[lastEnd:start]))
+
+		if loc[2] >= 0 {
+			// {label} placeholder
+			label := template[loc[2]:loc[3]]
+			if seenLabels[label] {
+				return nil, fmt.Errorf("duplicate label name %q in template", label)
+			}
+			seenLabels[label] = true
+			labelNames = append(labelNames, label)
+			fmt.Fprintf(&sb, "(?P<%s>.+?)", label)
+		} else {
+			// * wildcard
+			sb.WriteString(`(?:.+?)`)
+		}
+
+		lastEnd = end
 	}
+	sb.WriteString(regexp.QuoteMeta(template[lastEnd:]))
+	sb.WriteString("$")
 
-	regexStr := template
-	regexStr = strings.ReplaceAll(regexStr, "*", `(?:.+?)`)
-
-	for _, label := range labelNames {
-		placeholder := fmt.Sprintf("{%s}", label)
-		replacement := fmt.Sprintf("(?P<%s>.+?)", label)
-		regexStr = strings.Replace(regexStr, placeholder, replacement, 1)
-	}
-
-	regexStr = "^" + regexStr + "$"
-
-	r, err := regexp.Compile(regexStr)
+	r, err := regexp.Compile(sb.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile regex from template: %w", err)
 	}
