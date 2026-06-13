@@ -32,6 +32,19 @@ helm install local-path-exporter local-path-exporter/local-path-exporter \
   --create-namespace
 ```
 
+### 3. (Optional) Verify the chart signature
+Chart packages are signed with a Helm provenance file (`.prov`). Import the
+public signing key and verify before installing:
+```bash
+# Import the public key and export it to a legacy keyring helm can read
+curl -fsSL https://tmusial99.github.io/local-path-exporter/helm-signing-key.asc | gpg --import
+gpg --export > ~/.gnupg/pubring.gpg
+
+# Verify the signature on pull/install
+helm pull local-path-exporter/local-path-exporter --verify --keyring ~/.gnupg/pubring.gpg
+```
+Signing key fingerprint: `7FED455C2F76B3E0216E73F26F0F38A50C4D9D03`.
+
 ## 📊 Metrics
 
 The exporter exposes the following metrics on port `9100`:

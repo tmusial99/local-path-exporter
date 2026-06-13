@@ -55,7 +55,7 @@ app/                      Go module (module path: local-path-exporter)
 charts/local-path-exporter/   Helm chart (DaemonSet, Service, ServiceMonitor, helpers)
 docs/                     Published Helm repo (index.yaml + .tgz) + artifacthub-repo.yml
 grafana/                  dashboard.json + screenshot
-.github/workflows/        ci.yaml (PR/push checks) + docker-publish.yaml (tag-triggered image build/push)
+.github/workflows/        ci.yaml (PR/push checks), docker-publish.yaml (image on semver tag), chart-release.yaml (signed chart on chart-* tag)
 README.md
 ```
 
@@ -109,24 +109,37 @@ both macOS (darwin/arm64) and Linux. CI runs on `ubuntu-latest`.
 
 ## Versioning & release contract
 
-Three version fields must stay consistent on a release:
+There are **two independent release axes**, each with its own tag namespace:
 
-- `charts/local-path-exporter/Chart.yaml`: `version` (the **chart** version, SemVer)
-  and `appVersion` (the **app/image** version).
-- The git tag `X.Y.Z` that triggers `docker-publish.yaml` → image
-  `ghcr.io/tmusial99/local-path-exporter:X.Y.Z`. The chart's
-  `image.tag` defaults to `.Chart.AppVersion`, so `appVersion` must equal the
-  pushed image tag.
-- The published Helm repo `docs/index.yaml` (and the `docs/*.tgz`) must match the
-  chart version actually shipped, and the README badge/version should agree.
+- **Image release** — bare semver tag `X.Y.Z` (e.g. `1.1.0`). Triggers
+  `docker-publish.yaml` → image `ghcr.io/tmusial99/local-path-exporter:X.Y.Z`.
+  The chart's `image.tag` defaults to `.Chart.AppVersion`, so `appVersion` must
+  equal the pushed image tag.
+- **Chart release** — tag `chart-X.Y.Z` (e.g. `chart-0.2.2`), where `X.Y.Z` is
+  the **chart** `version` in `Chart.yaml`. Triggers `chart-release.yaml`, which
+  packages + **signs** the chart and publishes it to `docs/` (the Pages Helm
+  repo). A chart-only change (no app change) keeps `appVersion` the same and is
+  shipped with a `chart-*` tag alone — no image rebuild.
 
-Keep these in lockstep; drift between them is a release bug (e.g. `index.yaml`
-advertising a chart version the `.tgz` does not contain).
+Consistency rules:
+
+- `appVersion` must equal the image tag that exists on GHCR.
+- A `chart-X.Y.Z` tag must match `Chart.yaml`'s `version` (CI enforces this).
+- The published `docs/index.yaml`, the `docs/*.tgz` (+ `.tgz.prov`), and the
+  README version/badge must all agree. Drift is a release bug (e.g. `index.yaml`
+  advertising a chart version the `.tgz` does not contain).
+- The chart is signed (Helm provenance). The public key lives at
+  `docs/helm-signing-key.asc`; the private key is **not** in this repo (operator
+  secret: GitHub Actions secret `HELM_GPG_PRIVATE_KEY`, also kept in the
+  operator's SOPS store). Signing key fingerprint
+  `7FED455C2F76B3E0216E73F26F0F38A50C4D9D03`.
 
 ## Secrets and safety
 
-- No application secrets. The only CI credential is the built-in `GITHUB_TOKEN`
-  (packages: write) for GHCR.
+- No application secrets. CI credentials: the built-in `GITHUB_TOKEN`
+  (packages: write for GHCR; contents: write for the chart-release commit) and
+  the `HELM_GPG_PRIVATE_KEY` secret (base64 of the chart-signing private key,
+  used only by `chart-release.yaml`).
 - Do not read, print, modify, or commit real secret values. There are no `.env`
   files to read here.
 - The exporter runs as **root** with a **hostPath** mount; treat the security
@@ -139,14 +152,20 @@ advertising a chart version the `.tgz` does not contain).
   jobs — **go** (`go vet`, `go test -race`, `golangci-lint`, `govulncheck`) and
   **helm** (`helm lint`, `helm template` with default and
   `serviceMonitor.enabled=true`). This is the PR/push quality gate.
-- `.github/workflows/docker-publish.yaml`: triggered on a `*.*.*` tag push. Logs
-  in to GHCR, derives tags via `docker/metadata-action` (semver), and
-  builds/pushes a **multi-arch** image (`linux/amd64,linux/arm64`) from `./app`
-  with GHA build cache, attaching **provenance + SBOM** and a **keyless Cosign
-  signature** (Sigstore OIDC).
-- Chart publishing to the GitHub Pages Helm repo (`docs/`) is currently
-  **manual** (`helm package` + regenerate `index.yaml`). Verify the GitHub Pages
-  source (master `/docs` vs a `gh-pages` branch) before changing the publish flow.
+- `.github/workflows/docker-publish.yaml`: triggered on a **bare semver** tag
+  (`[0-9]+.[0-9]+.[0-9]+`). Logs in to GHCR, derives tags via
+  `docker/metadata-action` (semver), and builds/pushes a **multi-arch** image
+  (`linux/amd64,linux/arm64`) from `./app` with GHA build cache, attaching
+  **provenance + SBOM** and a **keyless Cosign signature** (Sigstore OIDC).
+- `.github/workflows/chart-release.yaml`: triggered on a `chart-X.Y.Z` tag.
+  Checks out `master`, imports the GPG key from the `HELM_GPG_PRIVATE_KEY`
+  secret, verifies `Chart.yaml` `version` == tag, runs `helm package --sign`
+  into `docs/`, regenerates `docs/index.yaml` (`--merge`), and commits the
+  packaged `.tgz` + `.tgz.prov` + index back to `master`. GitHub Pages serves
+  `docs/` from `master`. To cut a chart release: bump `Chart.yaml` `version`,
+  commit, then push `chart-<version>`.
+- The Pages source is **master `/docs`**; the repo intentionally publishes from
+  the default branch, not a `gh-pages` branch.
 
 ## Git
 

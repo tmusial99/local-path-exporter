@@ -1,0 +1,70 @@
+name: Release Chart
+
+# Publishes a signed Helm chart to the GitHub Pages repo (docs/) on a
+# `chart-X.Y.Z` tag. Image releases use bare semver tags and are handled by
+# docker-publish.yaml; the two tag namespaces are kept separate on purpose.
+on:
+  push:
+    tags:
+      - 'chart-[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+
+jobs:
+  release-chart:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@v6
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+
+      - name: Import GPG signing key
+        env:
+          HELM_GPG_PRIVATE_KEY: ${{ secrets.HELM_GPG_PRIVATE_KEY }}
+        run: |
+          if [ -z "$HELM_GPG_PRIVATE_KEY" ]; then
+            echo "::error::HELM_GPG_PRIVATE_KEY secret is not set"; exit 1
+          fi
+          printf '%s' "$HELM_GPG_PRIVATE_KEY" | base64 -d | gpg --batch --import
+          # helm --sign reads a legacy secret keyring, not the gpg keybox.
+          gpg --export-secret-keys > "$RUNNER_TEMP/secring.gpg"
+
+      - name: Verify Chart.yaml version matches the tag
+        run: |
+          chart_version="$(helm show chart charts/local-path-exporter | awk '/^version:/{print $2}')"
+          tag_version="${GITHUB_REF_NAME#chart-}"
+          echo "Chart.yaml=$chart_version tag=$tag_version"
+          if [ "$chart_version" != "$tag_version" ]; then
+            echo "::error::Chart.yaml version ($chart_version) does not match tag ($tag_version)"; exit 1
+          fi
+
+      - name: Package and sign the chart
+        run: |
+          helm package charts/local-path-exporter \
+            --sign --key "tmusial99@gmail.com" \
+            --keyring "$RUNNER_TEMP/secring.gpg" \
+            --destination docs/
+
+      - name: Regenerate repo index
+        run: |
+          helm repo index docs \
+            --url https://tmusial99.github.io/local-path-exporter \
+            --merge docs/index.yaml
+
+      - name: Commit and push published chart
+        run: |
+          version="${GITHUB_REF_NAME#chart-}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/
+          if git diff --cached --quiet; then
+            echo "Nothing to publish (chart ${version} already present)."; exit 0
+          fi
+          git commit -m "release: publish chart ${version} to helm repo"
+          git push origin HEAD:master

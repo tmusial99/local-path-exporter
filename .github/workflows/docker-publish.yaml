@@ -2,7 +2,9 @@ name: Build and Push Docker Image
 
 on:
   push:
-    tags: [ '*.*.*' ]
+    # Bare semver only (the app/image version). Chart releases use `chart-*`
+    # tags handled by chart-release.yaml; keep the two namespaces separate.
+    tags: [ '[0-9]+.[0-9]+.[0-9]+' ]
 
 env:
   REGISTRY: ghcr.io
