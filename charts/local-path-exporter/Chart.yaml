@@ -2,7 +2,7 @@ apiVersion: v2
 name: local-path-exporter
 description: A Prometheus exporter for local-path PVC storage usage
 type: application
-version: 0.2.2
+version: 0.2.3
 appVersion: "1.1.0"
 
 keywords:
@@ -36,10 +36,10 @@ annotations:
     - title: Local Path Storage Overview dashboard
       url: https://raw.githubusercontent.com/tmusial99/local-path-exporter/master/grafana/dashboard.png
   artifacthub.io/changes: |
-    - kind: added
-      description: values.schema.json for values validation (Artifact Hub schema)
-    - kind: added
-      description: Signed chart packages (Helm provenance .prov), verifiable with the published GPG public key
+    - kind: security
+      description: Set automountServiceAccountToken=false (exporter never calls the Kubernetes API)
+    - kind: changed
+      description: First chart release published and signed automatically by CI (chart-release workflow)
   artifacthub.io/signKey: |
     fingerprint: 7FED455C2F76B3E0216E73F26F0F38A50C4D9D03
     url: https://tmusial99.github.io/local-path-exporter/helm-signing-key.asc
