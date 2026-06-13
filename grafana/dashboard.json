@@ -123,7 +123,6 @@
         },
         "showThresholdLabels": false,
         "showThresholdMarkers": true,
-        "showthresholdMarkers": true,
         "sizing": "auto"
       },
       "pluginVersion": "12.2.1",
@@ -514,7 +513,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "System / Other"
+              "options": "System / Overhead"
             },
             "properties": [
               {
@@ -855,7 +854,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": "",
+  "refresh": "1m",
   "schemaVersion": 42,
   "tags": [
     "kubernetes",
