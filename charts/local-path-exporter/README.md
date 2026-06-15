@@ -1,66 +1,70 @@
 # local-path-exporter
 
-A Prometheus exporter that reports the disk usage of
-[`rancher/local-path-provisioner`](https://github.com/rancher/local-path-provisioner)
-(and other directory/HostPath) Persistent Volumes in Kubernetes.
+Prometheus exporter for disk usage of `rancher/local-path-provisioner` PVCs and
+other directory-backed Kubernetes volumes.
 
-Standard kubelet metrics do not report per-PVC usage for directory-backed
-storage; this exporter fills that gap. It runs as a **DaemonSet** on every node,
-periodically scans the provisioner's storage directory, computes each PVC
-directory's real on-disk usage, and exposes Prometheus metrics on port `9100` at
-`/metrics`.
+It runs as a DaemonSet, scans the configured host storage path on each node,
+caches the result, and serves metrics on `:9100/metrics`.
 
 ## Install
 
 ```bash
 helm repo add local-path-exporter https://tmusial99.github.io/local-path-exporter
 helm repo update
-
 helm install local-path-exporter local-path-exporter/local-path-exporter \
   --namespace monitoring --create-namespace
 ```
 
-Enable a `ServiceMonitor` (Prometheus Operator):
+Enable Prometheus Operator discovery:
 
 ```bash
-helm install local-path-exporter local-path-exporter/local-path-exporter \
+helm upgrade --install local-path-exporter local-path-exporter/local-path-exporter \
   --namespace monitoring --create-namespace \
   --set serviceMonitor.enabled=true
 ```
 
-> The DaemonSet mounts the host storage path read-only and runs as `root`
-> (required to stat files owned by other users on the host). With the default
-> `config.hostPathType: Directory`, the storage path must already exist on every
-> targeted node or the pod will fail to mount.
+The default storage path is `/var/lib/rancher/k3s/storage`. It must exist on
+each target node unless you change `config.hostPathType`.
 
 ## Metrics
 
-| Metric | Type | Description | Labels |
-|---|---|---|---|
-| `local_path_pvc_usage_bytes` | Gauge | Actual on-disk usage (block-based, `du`-equivalent) of the PVC directory in bytes. | `pvc_namespace`, `pvc_name` |
-| `local_path_storage_capacity_bytes` | Gauge | Total capacity of the underlying storage filesystem. | – |
-| `local_path_storage_total_used_bytes` | Gauge | Total used space on the underlying filesystem (OS + PVCs). | – |
-
-## Key configuration
-
-| Parameter | Description | Default |
+| Metric | Description | Labels |
 |---|---|---|
-| `config.storagePath` | Host path the provisioner stores data in. | `/var/lib/rancher/k3s/storage` |
-| `config.metricTemplate` | Pattern to extract labels from directory names. | `pvc-*_{pvc_namespace}_{pvc_name}` |
-| `config.refreshIntervalSeconds` | How often directory sizes are recalculated. | `60` |
-| `config.hostPathType` | `hostPath` volume type (`Directory` / `DirectoryOrCreate`). | `Directory` |
-| `containerSecurityContext` | Hardened container security context (read-only rootfs, dropped caps, seccomp). | see `values.yaml` |
-| `livenessProbe` / `readinessProbe` | HTTP probes on `/metrics`. | enabled |
-| `serviceMonitor.enabled` | Create a `ServiceMonitor` for the Prometheus Operator. | `false` |
+| `local_path_pvc_usage_bytes` | Real on-disk PVC directory usage, like `du`. | from `config.metricTemplate` |
+| `local_path_storage_capacity_bytes` | Total capacity of the scanned filesystem. | none |
+| `local_path_storage_total_used_bytes` | Total used space on the scanned filesystem. | none |
 
-See [`values.yaml`](./values.yaml) for the full list.
+## Values
 
-## Grafana dashboard
+| Value | Default | Notes |
+|---|---:|---|
+| `config.storagePath` | `/var/lib/rancher/k3s/storage` | Host path to scan. |
+| `config.metricTemplate` | `pvc-*_{pvc_namespace}_{pvc_name}` | Directory-name parser and metric label source. |
+| `config.refreshIntervalSeconds` | `60` | Background scan interval. |
+| `config.hostPathType` | `Directory` | Kubernetes `hostPath` type. |
+| `serviceMonitor.enabled` | `false` | Creates a `ServiceMonitor`. |
 
-A ready-made dashboard is available at
-[`grafana/dashboard.json`](https://github.com/tmusial99/local-path-exporter/blob/master/grafana/dashboard.json).
+See [`values.yaml`](./values.yaml) for all values.
 
-## Source & license
+The DaemonSet mounts the host path read-only and runs as UID/GID `0` so it can
+stat files owned by other users. The container drops Linux capabilities, uses a
+read-only root filesystem, and does not mount a service account token.
+
+## Signature
+
+Chart packages are signed.
+
+```bash
+curl -fsSL https://tmusial99.github.io/local-path-exporter/helm-signing-key.asc | gpg --import
+gpg --export > ~/.gnupg/pubring.gpg
+helm pull local-path-exporter/local-path-exporter --verify --keyring ~/.gnupg/pubring.gpg
+```
+
+Signing key fingerprint:
+`7FED455C2F76B3E0216E73F26F0F38A50C4D9D03`.
+
+## Links
 
 - Source: <https://github.com/tmusial99/local-path-exporter>
+- Dashboard: <https://github.com/tmusial99/local-path-exporter/blob/master/grafana/dashboard.json>
 - License: MIT
